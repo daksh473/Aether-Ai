@@ -171,7 +171,7 @@ const ChatInterface = forwardRef(function ChatInterface({ onStreamEvent, agentSt
           </button>
         </div>
         <div className="chat-hint">
-          Press Enter to send • Powered by Gemini + Multi-Agent Orchestration
+          Press Enter to send • Powered by Groq + Multi-Agent Orchestration
         </div>
       </div>
     </div>

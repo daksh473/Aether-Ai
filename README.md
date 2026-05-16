@@ -25,7 +25,7 @@ A **Hub-and-Spoke** multi-agent system that orchestrates three specialized AI ag
 
 | Component | Technology |
 |:---|:---|
-| LLM | Google Gemini 2.0 Flash |
+| LLM | Groq (Llama 3.1 70B Versatile) |
 | Agent Orchestration | Google ADK pattern (custom) |
 | Tool Protocol | MCP (Model Context Protocol) |
 | API Server | FastAPI + Uvicorn |
@@ -47,10 +47,10 @@ pip install -r requirements.txt
 Create a `.env` file in the project root:
 
 ```env
-GOOGLE_API_KEY=your-gemini-api-key-here
+GROQ_API_KEY=your-groq-api-key-here
 ```
 
-Get a free key at [Google AI Studio](https://aistudio.google.com/).
+Get a free key at [Groq Console](https://console.groq.com/).
 
 ### 3. Initialize Database
 

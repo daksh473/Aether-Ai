@@ -3,8 +3,8 @@ Librarian Agent — specialist in querying, organizing, and summarizing notes
 from the knowledge base.  Uses Knowledge MCP tools.
 """
 import json
-from google import genai
-from backend.config import GOOGLE_API_KEY, GEMINI_MODEL, AGENT_TEMPERATURE
+from groq import Groq
+from backend.config import GROQ_API_KEY, GROQ_MODEL, AGENT_TEMPERATURE
 from backend.mcp_servers.knowledge_server import KNOWLEDGE_TOOLS
 from backend.state.blackboard import Blackboard
 
@@ -36,29 +36,27 @@ Call tools by responding with JSON: {"tool": "tool_name", "args": {...}}
 
 async def run_librarian(task: str, blackboard: Blackboard, user_id: str = "user_123") -> dict:
     """
-    Execute a knowledge base operation using Gemini + Knowledge MCP tools.
+    Execute a knowledge base operation using Groq + Knowledge MCP tools.
     """
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    client = Groq(api_key=GROQ_API_KEY)
     context = blackboard.get_context_summary()
 
     messages = [
-        {"role": "user", "parts": [{"text": f"{context}\n\n## Task\n{task}\n\nUser ID: {user_id}\n\nRespond with a JSON tool call if you need data, or a final JSON result."}]}
+        {"role": "system", "content": LIBRARIAN_SYSTEM},
+        {"role": "user", "content": f"{context}\n\n## Task\n{task}\n\nUser ID: {user_id}\n\nRespond with a JSON tool call if you need data, or a final JSON result."},
     ]
 
     reasoning_steps = []
     final_result = ""
 
     for step in range(5):
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=messages,
-            config=genai.types.GenerateContentConfig(
-                system_instruction=LIBRARIAN_SYSTEM,
-                temperature=AGENT_TEMPERATURE,
-            ),
+        completion = client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=messages,
+            temperature=AGENT_TEMPERATURE,
         )
 
-        text = response.text.strip()
+        text = (completion.choices[0].message.content or "").strip()
         reasoning_steps.append(text)
 
         try:
@@ -74,8 +72,8 @@ async def run_librarian(task: str, blackboard: Blackboard, user_id: str = "user_
                         args["user_id"] = user_id
                     tool_result = await tool_fn(**args)
 
-                    messages.append({"role": "model", "parts": [{"text": text}]})
-                    messages.append({"role": "user", "parts": [{"text": f"Tool result: {tool_result}\n\nNow provide your final analysis and response as JSON."}]})
+                    messages.append({"role": "assistant", "content": text})
+                    messages.append({"role": "user", "content": f"Tool result: {tool_result}\n\nNow provide your final analysis and response as JSON."})
                     continue
                 else:
                     final_result = text

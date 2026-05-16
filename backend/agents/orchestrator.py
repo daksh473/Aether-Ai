@@ -11,8 +11,8 @@ Responsibilities:
 import json
 import asyncio
 from typing import AsyncGenerator
-from google import genai
-from backend.config import GOOGLE_API_KEY, GEMINI_MODEL, AGENT_TEMPERATURE
+from groq import Groq
+from backend.config import GROQ_API_KEY, GROQ_MODEL, AGENT_TEMPERATURE
 from backend.state.blackboard import Blackboard
 from backend.state.memory import get_all_preferences, get_recent_context, save_execution
 from backend.agents.scheduler import run_scheduler
@@ -66,8 +66,8 @@ AGENT_RUNNERS = {
 
 
 async def classify_and_plan(query: str, user_id: str, preferences: dict, recent_history: str) -> TaskPlan:
-    """Use Gemini to classify intent and create an execution plan."""
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    """Use Groq to classify intent and create an execution plan."""
+    client = Groq(api_key=GROQ_API_KEY)
 
     context_parts = [
         f"## User Preferences\n{json.dumps(preferences, indent=2)}",
@@ -75,16 +75,17 @@ async def classify_and_plan(query: str, user_id: str, preferences: dict, recent_
         f"## User Request\n{query}",
     ]
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=[{"role": "user", "parts": [{"text": "\n\n".join(context_parts)}]}],
-        config=genai.types.GenerateContentConfig(
-            system_instruction=ORCHESTRATOR_SYSTEM,
-            temperature=AGENT_TEMPERATURE,
-        ),
+    completion = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": ORCHESTRATOR_SYSTEM},
+            {"role": "user", "content": "\n\n".join(context_parts)},
+        ],
+        temperature=AGENT_TEMPERATURE,
+        response_format={"type": "json_object"},
     )
 
-    text = response.text.strip()
+    text = (completion.choices[0].message.content or "").strip()
 
     # Parse the plan
     try:
@@ -232,8 +233,8 @@ async def execute_plan(
 
 
 async def _synthesize_response(query: str, blackboard: Blackboard, thoughts: list[AgentThought]) -> str:
-    """Use Gemini to create a unified, user-friendly summary from all agent results."""
-    client = genai.Client(api_key=GOOGLE_API_KEY)
+    """Use Groq to create a unified, user-friendly summary from all agent results."""
+    client = Groq(api_key=GROQ_API_KEY)
 
     agent_results = blackboard.get_context_summary()
 
@@ -251,12 +252,13 @@ Use bullet points for multiple items. Be specific about what changed.
 Keep it conversational but professional. Do NOT use JSON — respond in natural language.
 """
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=[{"role": "user", "parts": [{"text": synthesis_prompt}]}],
-        config=genai.types.GenerateContentConfig(
-            temperature=0.5,
-        ),
+    completion = client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that summarizes multi-agent execution results clearly and concisely."},
+            {"role": "user", "content": synthesis_prompt},
+        ],
+        temperature=0.5,
     )
 
-    return response.text.strip()
+    return (completion.choices[0].message.content or "").strip()

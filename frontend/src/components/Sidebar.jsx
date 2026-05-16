@@ -87,7 +87,7 @@ export default function Sidebar({ onQuickAction }) {
           color: 'var(--text-muted)',
           lineHeight: 1.5
         }}>
-          Powered by <strong style={{ color: 'var(--gold-400)' }}>Gemini 2.0 Flash</strong>
+          Powered by <strong style={{ color: 'var(--gold-400)' }}>Groq Llama 3.1</strong>
           <br />
           MCP Protocol • Hub-and-Spoke Architecture
         </div>
